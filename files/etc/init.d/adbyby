@@ -1,0 +1,67 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2015 GuoGuo<gch981213@gmail.com>
+# 99%抄自蝈蝈的adm启动脚本 by 1248289414
+
+START=99
+STOP=10
+USE_PROCD=1
+PROG_PATH=/usr/share/adbyby
+
+adbyby_check_enabled() {
+	local cfg="$1"
+	config_get_bool enabled $cfg enabled 0
+	[ $enabled -eq 0 ] && exit 0
+}
+rule_add_before(){
+	rm /usr/share/adbyby/data/user.bin
+	cat /usr/share/adbyby/cache/user.txt > /usr/share/adbyby/data/user.txt
+}	
+rule_add() {
+	local address
+
+	config_get address $1 address
+
+	[ -n "$address" ] && wget -O- $address >> /usr/share/adbyby/data/user.txt --quiet --timeout=10 --no-check-certificate
+}
+sh_add() {
+	local cfg="$1"
+	config_get_bool usesh $cfg usesh 0
+	if [ $usesh -eq 1 ]; then
+	if [ `grep -c "sh /usr/share/adbyby/sh/check.sh" /etc/crontabs/root` -eq 1 ]; then
+	/etc/init.d/cron restart
+	else
+	echo "*/5 * * * * sh /usr/share/adbyby/sh/check.sh" >> /etc/crontabs/root
+	/etc/init.d/cron restart
+	fi
+	else
+	sed -i "/sh \/usr\/share\/adbyby\/sh\/check.sh/d" /etc/crontabs/root
+	/etc/init.d/cron restart
+	fi
+}
+start_service() {
+	config_load 'adbyby'
+	config_foreach adbyby_check_enabled 'adbyby'
+	config_foreach sh_add 'adbyby'
+	config_foreach rule_add_before adbyby
+	config_foreach rule_add extrule
+	
+	procd_open_instance
+	procd_set_param command $PROG_PATH/adbyby
+	procd_set_param respawn
+	procd_set_param limits cpu=43200
+	procd_close_instance
+	
+	killall adbyby
+	iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports 8118
+}
+
+stop_service() {
+	sed -i "/sh \/usr\/share\/adbyby\/sh\/check.sh/d" /etc/crontabs/root
+	/etc/init.d/cron restart
+	iptables -t nat -D PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports 8118
+}
+
+reload_service() {
+	restart
+}
+
