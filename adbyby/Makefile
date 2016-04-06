@@ -7,8 +7,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=adbyby
-PKG_VERSION:=2.5.0.2
-PKG_RELEASE:=20160329
+PKG_VERSION:=2.7
+PKG_RELEASE:=20160110
 
 include $(INCLUDE_DIR)/package.mk
 
