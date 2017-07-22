@@ -98,9 +98,11 @@ o = s:taboption("advanced", DynamicList, "lan_ip")
 o.title = translate("内网IP列表")
 o.datatype = "ipaddr"
 o.placeholder = "IP address | IP/Mask"
-for i,v in ipairs(SYS.net.arptable()) do
-	o:value(v["IP address"])
-end
+luci.ip.neighbors({ family = 4 }, function(entry)
+	if entry.reachable then
+		o:value(entry.dest:string())
+	end
+end)
 o:depends("lan_mode", 1)
 o:depends("lan_mode", 2)
 
